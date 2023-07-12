@@ -21,7 +21,13 @@ The battery energy storage systems, functions as buffer to supply the electrolys
 ## Water electrolyser
 the core of the model, and the objective is to have the most constant production of the electrolysis
 
-## Optimisation model eqautions
+## electrical loads
+optional for now, which is the electrical load, in Italy, which can be taken from the website :<br>
+https://www.arera.it/it/dati/mr/mr_consumiele.htm#
+
+
+
+## Optimisation model equations
 The optimisation model is constrcuted using the Pyomo library, solved using Gurobi solver.
 
 ### parameters
