@@ -1,0 +1,133 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul 12 14:32:19 2023
+
+@author: utente
+"""
+
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.cluster import KMeans
+
+
+from tslearn.clustering import TimeSeriesKMeans
+from tslearn.datasets import CachedDatasets
+from tslearn.preprocessing import TimeSeriesScalerMeanVariance, \
+    TimeSeriesResampler
+    
+from sklearn.metrics import silhouette_score, silhouette_samples, davies_bouldin_score
+from tqdm import tqdm
+
+from kneed import KneeLocator, DataGenerator as dg
+import scienceplots
+    
+#%%
+nature_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC']
+plt.style.use(["science", "nature"])
+
+# plt.rcParams["font.family"] = "Times New Roman"
+
+
+
+#%%
+df=pd.read_csv("PV_production.csv",index_col=0)
+df.dropna(axis=0,inplace=True)
+
+date_str = '31/12/2020'
+start = pd.to_datetime(date_str) - pd.Timedelta(days=365)
+hourly_periods = 8784
+drange = pd.date_range(start, periods=hourly_periods, freq='H')
+
+df.index=drange
+
+#%% remove a day
+datetime_index = pd.to_datetime("29/02/2020", format="%d/%m/%Y")
+
+df=df[df.index.date!=datetime_index.date()]
+
+#%%
+
+df["Days"]=df.index.date
+
+df_grouped=pd.DataFrame()
+for i,j in enumerate(df["Days"].unique()):
+   df_grouped[i+1]=list(df[df["Days"]==j]["P"])
+ 
+df_grouped.index=np.arange(1,24+1,1)   
+df_grouped=df_grouped.T
+#%%
+
+X_train=TimeSeriesScalerMeanVariance().fit_transform(df_grouped) #Scaler for time series. Scales time series so that their mean (resp. standard deviation) in each dimension is mu (resp. std).
+
+X_reshaped = X_train.reshape(X_train.shape[0], -1) #reshaping for easy to manage
+
+
+seed=0 #random state
+km = TimeSeriesKMeans(n_clusters=3, verbose=True, random_state=seed)
+y_pred = km.fit_predict(X_reshaped)
+
+
+plt.figure()
+for yi in range(3):
+    plt.subplot(3, 3, yi + 1)
+    for xx in X_reshaped[y_pred == yi]:
+        plt.plot(xx.ravel(), "k-", alpha=.2)
+    plt.plot(km.cluster_centers_[yi].ravel(), "r-")
+    plt.xlim(0, 24)
+   
+    if yi == 1:
+        plt.title("Euclidean $k$-means")
+
+#%%
+wcss=[]
+Silhoutte = []
+
+
+
+for i in tqdm(range(2,20)):
+    km = TimeSeriesKMeans(n_clusters=i, verbose=True, random_state=seed)
+
+    km.fit(X_train)
+    wcss_iter = km.inertia_
+    wcss.append(wcss_iter)
+    labels = km.fit_predict(X_reshaped)
+    
+    Silhoutte.append(silhouette_score(X_reshaped, labels))
+    
+
+#%%
+plt.rcParams.update({"figure.dpi": "150"})
+plt.rcParams["figure.constrained_layout.use"] = True
+
+number_clusters = range(2,20)
+
+kl = KneeLocator(number_clusters,wcss, curve="convex", direction="decreasing")
+
+
+
+
+fig,ax=plt.subplots(nrows=2, ncols=1,sharex=True)
+ax[0].plot(number_clusters,wcss,marker=".",label="Inertia",color=nature_colors[0])
+ax[0].axvline(x=kl.knee,color="gray",label=f"elbow at {kl.knee} clusters")
+ax[0].set_ylabel('Inertia')
+ax[0].legend()
+# ax[0].set_xlabel('Number of clusters')
+ax[0].grid()
+
+
+
+ax[1].plot(number_clusters,Silhoutte,marker="s",label="Silhoutte",color=nature_colors[1])
+ax[1].legend()
+ax[1].set_xlabel('Number of clusters')
+ax[1].grid()
+
+
+
+plt.xticks(range(2,20))
+
+
+plt.suptitle('The Elbow test: determining K')
