@@ -24,7 +24,8 @@ from tqdm import tqdm
 
 from kneed import KneeLocator, DataGenerator as dg
 import scienceplots
-    
+
+from sklearn.preprocessing import StandardScaler
 #%%
 nature_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC']
 plt.style.use(["science", "nature"])
@@ -63,7 +64,12 @@ df_grouped=df_grouped.T
 
 X_train=TimeSeriesScalerMeanVariance().fit_transform(df_grouped) #Scaler for time series. Scales time series so that their mean (resp. standard deviation) in each dimension is mu (resp. std).
 
+
+
 X_reshaped = X_train.reshape(X_train.shape[0], -1) #reshaping for easy to manage
+#%%
+
+# X_reshaped =df_grouped.to_numpy()
 
 
 seed=0 #random state
@@ -91,7 +97,7 @@ Silhoutte = []
 for i in tqdm(range(2,20)):
     km = TimeSeriesKMeans(n_clusters=i, verbose=True, random_state=seed)
 
-    km.fit(X_train)
+    km.fit(X_reshaped)
     wcss_iter = km.inertia_
     wcss.append(wcss_iter)
     labels = km.fit_predict(X_reshaped)
@@ -100,7 +106,7 @@ for i in tqdm(range(2,20)):
     
 
 #%%
-plt.rcParams.update({"figure.dpi": "150"})
+plt.rcParams.update({"figure.dpi": "200"})
 plt.rcParams["figure.constrained_layout.use"] = True
 
 number_clusters = range(2,20)
@@ -112,22 +118,48 @@ kl = KneeLocator(number_clusters,wcss, curve="convex", direction="decreasing")
 
 fig,ax=plt.subplots(nrows=2, ncols=1,sharex=True)
 ax[0].plot(number_clusters,wcss,marker=".",label="Inertia",color=nature_colors[0])
-ax[0].axvline(x=kl.knee,color="gray",label=f"elbow at {kl.knee} clusters")
+ax[0].axvline(x=kl.knee,color="gray",label=f"Inertia at {kl.knee} cl")
 ax[0].set_ylabel('Inertia')
 ax[0].legend()
 # ax[0].set_xlabel('Number of clusters')
-ax[0].grid()
+# ax[0].grid()
+ax[0].tick_params(which='minor', bottom=False, top=False, right=False, left=False)
+
 
 
 
 ax[1].plot(number_clusters,Silhoutte,marker="s",label="Silhoutte",color=nature_colors[1])
 ax[1].legend()
 ax[1].set_xlabel('Number of clusters')
-ax[1].grid()
-
-
+# ax[1].grid()
+ax[1].tick_params(which='minor', bottom=False, top=False, right=False, left=False)
+ax[1].axvline(x=(np.argmax(Silhoutte)+min(number_clusters)),color="gray",label=f"Silhoutte at {(np.argmax(Silhoutte)+min(number_clusters))} cl")
+ax[1].legend()
+ax[1].set_ylabel("Silhoutte")
 
 plt.xticks(range(2,20))
 
 
 plt.suptitle('The Elbow test: determining K')
+#%%
+k=kl.knee
+
+seed=0 #random state
+km = TimeSeriesKMeans(n_clusters=k, verbose=True, random_state=seed)
+y_pred = km.fit_predict(X_reshaped)
+
+for yi in range(kl.knee):
+    plt.subplot(3, (kl.knee//3)+1, yi + 1)
+    for xx in X_reshaped[y_pred == yi]:
+        plt.plot(xx.ravel(), "k-", alpha=.2)
+    plt.plot(km.cluster_centers_[yi].ravel(), "r-")
+    plt.text(0.45, 0.85,'Cluster %d' % (yi + 1),
+             transform=plt.gca().transAxes,fontsize=6)
+    plt.xlim(0, 24)
+   
+    if yi == 1:
+        plt.title("Euclidean $k$-means")
+        
+        
+#%% transforming back
+   
