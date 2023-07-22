@@ -20,10 +20,11 @@ import matplotlib.pyplot as plt
 #%%
 
 plt.rcParams["font.family"] = "Times New Roman"
+plt.rcParams["figure.constrained_layout.use"] = True
 
 #%%
-# df_load=pd.read_pickle("df_load.pkl")
-# load=(df_load.iloc[:,0]*1000).tolist()
+df_load=pd.read_pickle("df_load.pkl")
+load=(df_load.iloc[:,0]*1000).tolist()
 
 
 #%%
@@ -51,6 +52,18 @@ for i in df.index:
 
 PV_gen=PV_s
 
+#%%
+# PV_size=1000 #1kW
+# df=pd.read_csv("k-means.csv",index_col=0)
+
+# PV_gen=[]
+
+# for i in df.iloc[:,0].tolist():
+#     if i<5:
+#         PV_gen.append(0)
+#     else :
+#         PV_gen.append(i)
+
 
 #%%
 
@@ -65,6 +78,9 @@ initial_soc=0.2
 M = 1000  # Big M value method to transfer the 
 
 PV_size=max(PV_gen)
+
+# PV_size=1000
+
 
 # model creation
 # hlist=[i for i in range(8760)] #hours

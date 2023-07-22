@@ -142,7 +142,10 @@ X_centers=scaler.inverse_transform(cluster.cluster_centers_)
 
 plt.figure(888)
 for yi in range(kl.knee):
-    plt.subplot(3, (kl.knee//3)+1, yi + 1)
+    if kl.knee//3>1:
+        plt.subplot(3, (kl.knee//3)+1, yi + 1)
+    else:
+        plt.subplot(2, (kl.knee//2), yi + 1)
     for xx in X_back[y_pred == yi]:
         plt.plot(xx.ravel(), "k-", alpha=.2)
     plt.plot(X_centers[yi].ravel(), "r-")
@@ -150,8 +153,9 @@ for yi in range(kl.knee):
              transform=plt.gca().transAxes,fontsize=6)
     plt.xlim(0, 24)
    
-    if yi == 1:
-        plt.title("Euclidean $k$-means using scikit-learn \n and inversed back")
+    # if yi == 1:
+    #     plt.title("Euclidean $k$-means using scikit-learn \n and inversed back")
+    plt.suptitle("Euclidean $k$-means")
 #%%
 
 labels = cluster.fit_predict(X)
@@ -181,111 +185,111 @@ np.unique(labels, return_counts=True) # number of elements in each clusters
 # =============================================================================
 #  Using tslearn package
 # =============================================================================
-# #%%
+#%%
 
-# X_train=TimeSeriesScalerMeanVariance().fit_transform(df_grouped) #Scaler for time series. Scales time series so that their mean (resp. standard deviation) in each dimension is mu (resp. std).
-
-
-
-# X_reshaped = X_train.reshape(X_train.shape[0], -1) #reshaping for easy to manage
-# #%%
+X_train=TimeSeriesScalerMeanVariance().fit_transform(df_grouped) #Scaler for time series. Scales time series so that their mean (resp. standard deviation) in each dimension is mu (resp. std).
 
 
 
-# # X_reshaped =df_grouped.to_numpy()
-
-
-# seed=0 #random state
-# km = TimeSeriesKMeans(n_clusters=3, verbose=True, random_state=seed)
-# y_pred = km.fit_predict(X_reshaped)
-
-
-# # plt.figure()
-# # for yi in range(3):
-# #     plt.subplot(3, 3, yi + 1)
-# #     for xx in X_reshaped[y_pred == yi]:
-# #         plt.plot(xx.ravel(), "k-", alpha=.2)
-# #     plt.plot(km.cluster_centers_[yi].ravel(), "r-")
-# #     plt.xlim(0, 24)
-   
-# #     if yi == 1:
-# #         plt.title("Euclidean $k$-means")
-        
-        
-        
-
-# #%%
-# wcss=[]
-# Silhoutte = []
+X_reshaped = X_train.reshape(X_train.shape[0], -1) #reshaping for easy to manage
+#%%
 
 
 
-# for i in tqdm(range(2,20)):
-#     km = TimeSeriesKMeans(n_clusters=i, verbose=True, random_state=seed)
-
-#     km.fit(X_reshaped)
-#     wcss_iter = km.inertia_
-#     wcss.append(wcss_iter)
-#     labels = km.fit_predict(X_reshaped)
-    
-#     Silhoutte.append(silhouette_score(X_reshaped, labels))
-    
-
-# #%%
+# X_reshaped =df_grouped.to_numpy()
 
 
-# number_clusters = range(2,20)
-
-# kl = KneeLocator(number_clusters,wcss, curve="convex", direction="decreasing")
-
-
+seed=0 #random state
+km = TimeSeriesKMeans(n_clusters=3, verbose=True, random_state=seed)
+y_pred = km.fit_predict(X_reshaped)
 
 
-# fig2,ax=plt.subplots(nrows=2, ncols=1,sharex=True)
-# ax[0].plot(number_clusters,wcss,marker=".",label="Inertia",color=nature_colors[0])
-# ax[0].axvline(x=kl.knee,color="gray",label=f"Inertia at {kl.knee} cl")
-# ax[0].set_ylabel('Inertia')
-# ax[0].legend()
-# # ax[0].set_xlabel('Number of clusters')
-# # ax[0].grid()
-# ax[0].tick_params(which='minor', bottom=False, top=False, right=False, left=False)
-
-
-
-
-# ax[1].plot(number_clusters,Silhoutte,marker="s",label="Silhoutte",color=nature_colors[1])
-# ax[1].legend()
-# ax[1].set_xlabel('Number of clusters')
-# # ax[1].grid()
-# ax[1].tick_params(which='minor', bottom=False, top=False, right=False, left=False)
-# ax[1].axvline(x=(np.argmax(Silhoutte)+min(number_clusters)),color="gray",label=f"Silhoutte at {(np.argmax(Silhoutte)+min(number_clusters))} cl")
-# ax[1].legend()
-# ax[1].set_ylabel("Silhoutte")
-
-# plt.xticks(range(2,20))
-
-
-# plt.suptitle('The Elbow test: determining K')
-# #%%
-# k=kl.knee
-
-# seed=0 #random state
-# km = TimeSeriesKMeans(n_clusters=k, verbose=True, random_state=seed)
-# y_pred = km.fit_predict(X_reshaped)
-
-# plt.figure(999)
-
-# for yi in range(kl.knee):
-#     plt.subplot(3, (kl.knee//3)+1, yi + 1)
+# plt.figure()
+# for yi in range(3):
+#     plt.subplot(3, 3, yi + 1)
 #     for xx in X_reshaped[y_pred == yi]:
 #         plt.plot(xx.ravel(), "k-", alpha=.2)
 #     plt.plot(km.cluster_centers_[yi].ravel(), "r-")
-#     plt.text(0.45, 0.85,'Cluster %d' % (yi + 1),
-#               transform=plt.gca().transAxes,fontsize=6)
 #     plt.xlim(0, 24)
    
 #     if yi == 1:
-#         plt.title("Euclidean $k$-means con tslearn")
+#         plt.title("Euclidean $k$-means")
+        
+        
+        
+
+#%%
+wcss=[]
+Silhoutte = []
+
+
+
+for i in tqdm(range(2,20)):
+    km = TimeSeriesKMeans(n_clusters=i, verbose=True, random_state=seed)
+
+    km.fit(X_reshaped)
+    wcss_iter = km.inertia_
+    wcss.append(wcss_iter)
+    labels = km.fit_predict(X_reshaped)
+    
+    Silhoutte.append(silhouette_score(X_reshaped, labels))
+    
+
+#%%
+
+
+number_clusters = range(2,20)
+
+kl = KneeLocator(number_clusters,wcss, curve="convex", direction="decreasing")
+
+
+
+
+fig2,ax=plt.subplots(nrows=2, ncols=1,sharex=True)
+ax[0].plot(number_clusters,wcss,marker=".",label="Inertia",color=nature_colors[0])
+ax[0].axvline(x=kl.knee,color="gray",label=f"Inertia at {kl.knee} cl")
+ax[0].set_ylabel('Inertia')
+ax[0].legend()
+# ax[0].set_xlabel('Number of clusters')
+# ax[0].grid()
+ax[0].tick_params(which='minor', bottom=False, top=False, right=False, left=False)
+
+
+
+
+ax[1].plot(number_clusters,Silhoutte,marker="s",label="Silhoutte",color=nature_colors[1])
+ax[1].legend()
+ax[1].set_xlabel('Number of clusters')
+# ax[1].grid()
+ax[1].tick_params(which='minor', bottom=False, top=False, right=False, left=False)
+ax[1].axvline(x=(np.argmax(Silhoutte)+min(number_clusters)),color="gray",label=f"Silhoutte at {(np.argmax(Silhoutte)+min(number_clusters))} cl")
+ax[1].legend()
+ax[1].set_ylabel("Silhoutte")
+
+plt.xticks(range(2,20))
+
+
+plt.suptitle('The Elbow test: determining K')
+#%%
+k=kl.knee
+
+seed=0 #random state
+km = TimeSeriesKMeans(n_clusters=k, verbose=True, random_state=seed)
+y_pred = km.fit_predict(X_reshaped)
+
+plt.figure(999)
+
+for yi in range(kl.knee):
+    plt.subplot(3, (kl.knee//3)+1, yi + 1)
+    for xx in X_reshaped[y_pred == yi]:
+        plt.plot(xx.ravel(), "k-", alpha=.2)
+    plt.plot(km.cluster_centers_[yi].ravel(), "r-")
+    plt.text(0.45, 0.85,'Cluster %d' % (yi + 1),
+              transform=plt.gca().transAxes,fontsize=6)
+    plt.xlim(0, 24)
+   
+    if yi == 1:
+        plt.title("Euclidean $k$-means with tslearn")
         
         
    
