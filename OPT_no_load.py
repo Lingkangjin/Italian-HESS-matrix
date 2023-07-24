@@ -65,10 +65,10 @@ for i in df.iloc[:,0].tolist():
         PV_gen2.append(i)
 PV_gen=PV_gen2
 
-#%%
-
-
+#%% tunable parameters 
 days=1
+
+
 lf=0.16
 C_rate_bess_max=1
 BESS_scale=2 # maximum scale of power compared to PV size
@@ -82,9 +82,7 @@ initial_soc=0.2
 SOC_min=0.2
 M = 1000  # Big M value method to transfer the 
 
-# PV_size=max(PV_gen)
 
-PV_size=1000
 #%%
 
 # model creation
