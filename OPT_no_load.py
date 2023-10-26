@@ -17,14 +17,29 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from HESS_reg_class import *
+
+from tqdm import tqdm
+import os
+
 # %%
 
-plt.rcParams["font.family"] = "Times New Roman"
+plt.rcParams["font.family"] = "Arial"
 plt.rcParams["figure.constrained_layout.use"] = True
 
 # %%
-df_load = pd.read_pickle("df_load.pkl")
-load = (df_load.iloc[:, 0]*1000).tolist()
+
+regions = ['Abruzzo', 'Basilicata', 'Calabria', 'Campania', 'Emilia-Romagna',
+           'Friuli-Venezia Giulia', 'Lazio', 'Liguria', 'Lombardia', 'Marche',
+           'Molise', 'Piemonte', 'Puglia', 'Sardegna', 'Sicilia', 'Toscana',
+           'Trentino-Alto Adige', 'Umbria', "Valle d'Aosta", 'Veneto']
+# %%
+# df_load = pd.read_pickle("df_load.pkl")
+# load = (df_load.iloc[:, 0]*1000).tolist()
+
+
+# df_load = HESS("Marche").load()
+# load = (df_load.iloc[:, 0]*1000).tolist()
 
 
 # %% reading the entire year data
@@ -52,42 +67,27 @@ load = (df_load.iloc[:, 0]*1000).tolist()
 # PV_gen=PV_s
 
 # %% reading from clusters
-PV_size = 1000  # 1kW
-df = pd.read_csv("k-means.csv", index_col=0)
-
-PV_gen2 = []
-
-for i in df.iloc[:, 0].tolist():
-    if i < 5:
-        PV_gen2.append(0)
-    else:
-        PV_gen2.append(i)
-PV_gen = PV_gen2
-
-# %% tunable parameters
-days = 1
-
-
-lf = 0.16
-C_rate_bess_max = 1
-BESS_scale = 2  # maximum scale of power compared to PV size
-hlist = [i for i in range(days*24)]
-# %%
-# parameters
-eta_EZ = 0.7
-eta_BESS = 0.9
-
-initial_soc = 0.2
-SOC_min = 0.2
-M = 1000  # Big M value method to transfer the
 
 
 # %%
 
 # model creation
 # hlist=[i for i in range(8760)] #hours
-def pyomo_model(lf):
-    hlist = [i for i in range(days*24)]  # hours
+def pyomo_model(lf, hlist, PV_gen):
+
+    # parameters
+    C_rate_bess_max = 1
+    BESS_scale = 5  # maximum scale of power compared to PV size
+    # hlist = [i for i in range(days*24)]
+
+    eta_EZ = 0.7
+    eta_BESS = 0.9
+
+    initial_soc = 0.2
+    SOC_min = 0.2
+    M = 1000  # Big M value method to transfer the
+
+    # hlist = [i for i in range(days*24)]  # hours
 
     model = ConcreteModel()  # Pyomo concrete model
 
@@ -123,7 +123,7 @@ def pyomo_model(lf):
     def elec_balance(model, h):
         return (PV_gen[h] +
                 model.BESS_out[h]*eta_BESS*(1 - model.BESS_charge[h]) -
-                model.BESS_in[h]*model.BESS_charge[h] -
+                model.BESS_in[h]*eta_BESS*model.BESS_charge[h] -
                 model.EZ_E_in[h]
                 == 0)
 
@@ -137,9 +137,11 @@ def pyomo_model(lf):
 
         model.storage_const.add(
             SOC_min * model.BESS_cap <= model.BESS_st[h])  # Min SOC
+
         model.storage_const.add(model.BESS_in[h] <= M * model.BESS_charge[h])
         model.storage_const.add(
             model.BESS_out[h] <= M * model.BESS_discharge[h])
+
         model.storage_const.add(model.EZ_E_in[h] <= model.EZ_size)
         model.storage_const.add(
             model.EZ_size*lf <= model.EZ_E_in[h])  # 80-100% load
@@ -162,9 +164,9 @@ def pyomo_model(lf):
     """
     Cyclic storage, causing problems
     """
-    # def BESS_circ(model):
-    #     return  model.BESS_st[0]==model.BESS_st[len(hlist)-1]
-    # model.BESS_circular = Constraint(rule=BESS_circ)
+    def BESS_circ(model):
+        return model.BESS_st[0] == model.BESS_st[len(hlist)-1]
+    model.BESS_circular = Constraint(rule=BESS_circ)
 
     for h in hlist[1:]:  # Energy balance in the storage systems
         previous_h = hlist[hlist.index(h)-1]
@@ -191,136 +193,185 @@ def pyomo_model(lf):
     # model.obj2 = pyo.Objective(rule=ObjRule)
 
     def ObjRule(model):
-        return sum(model.EZ_E_in[h] for h in hlist)
+        return sum(model.EZ_E_in[h] for h in hlist)-(model.BESS_cap+model.BESS_power)
     model.obj2 = pyo.Objective(rule=ObjRule, sense=maximize)
 
     return model
 
 
-# %% normal usage
-opt = pyo.SolverFactory('gurobi')
-model = pyomo_model(lf)
-results = opt.solve(pyomo_model(lf))
-model.solutions.store_to(results)
-# %% looping
-for i in np.arange(0.1, 1.0, 0.05)[::-1]:
-    opt = pyo.SolverFactory('gurobi')
+# %%
+PV_size = 1000  # 1kW
+# df = pd.read_csv("k-means.csv", index_col=0)
 
-    model = pyomo_model(i)
-    results = opt.solve(model)
 
-    if results.solver.termination_condition == TerminationCondition.optimal:
+# Specify the directory you want to list subfolders for
+directory_path = 'PV data\\Clusters\\'
+
+# Get a list of subfolders in the specified directory
+subfolders = [f for f in os.listdir(directory_path) if os.path.isdir(
+    os.path.join(directory_path, f))]
+
+# Now, 'subfolders' contains a list of subfolder names within the specified directory
+print(subfolders)
+
+
+df = pd.read_csv("PV data\Clusters\Abruzzo\Abruzzo_clusters.csv", index_col=0)
+
+
+# a = df.iloc[:, 0].tolist()
+
+# for j in df.columns[1:]:
+#     a.extend(df[j])
+
+# a = [i if i > 5 else 0 for i in a]
+
+def df_summary(df):
+    df_summary = pd.DataFrame(
+        columns=["EZ size (W)", "BESS Cap [Wh]", "BESS Power [W]", "minimum lf"])
+
+    for o, j in tqdm(enumerate(df.columns)):
+        PV_gen2 = []
+
+        for k in df.iloc[:, o].tolist():
+            if k < 5/PV_size:
+                PV_gen2.append(0)
+            else:
+                PV_gen2.append(k*PV_size)
+        PV_gen = PV_gen2
+
+        # %% tunable parameters
+
+        lf = 0.80
+        hlist = [i for i in range(len(PV_gen))]
+
+        # %% normal usage
+        opt = SolverFactory('gurobi')
+        model = pyomo_model(lf, hlist, PV_gen)
+        results = opt.solve(pyomo_model(lf, hlist, PV_gen))
         model.solutions.store_to(results)
+        # %% Design outputs
 
-        print(f"Solution found for load factor minimum {i}:")
-        break
-    else:
-        print(f"Solution NOT found for load factor {i}:")
+        # %% looping
+        for step in np.arange(0.1, 1.0, 0.05)[::-1]:
+            opt = pyo.SolverFactory('gurobi')
 
+            model = pyomo_model(step, hlist, PV_gen)
+            results = opt.solve(model)
 
-# %% use value instead of extract
+            if results.solver.termination_condition == TerminationCondition.optimal:
+                model.solutions.store_to(results)
 
-# value(model.EZ_E_in)
-df_res = pd.DataFrame(index=np.arange(0, len(hlist), 1))
-df_res["PV"] = PV_gen[:len(hlist)]
-# df_res["EZ_on"]=model.EZ_on.extract_values()
-df_res["EZ_in"] = model.EZ_E_in.extract_values()
-df_res["EZ_out"] = model.EZ_E_out.extract_values()
+                print(f"Solution found for load factor minimum {step}:")
+                break
+            else:
+                print(f"Solution NOT found for load factor {step}:")
 
+        # %% use value instead of extract
 
-df_res["BESS_in"] = model.BESS_in.extract_values()
-df_res["BESS_charge"] = model.BESS_charge.extract_values()
-df_res["BESS_out"] = model.BESS_out.extract_values()
-df_res["BESS_discharge"] = model.BESS_discharge.extract_values()
-df_res["BESS_storage"] = model.BESS_st.extract_values()
-df_res["BESS_idle state"] = model.BESS_idle.extract_values()
+        # value(model.EZ_E_in)
+        df_res = pd.DataFrame(index=np.arange(0, len(hlist), 1))
+        df_res["PV"] = PV_gen[:len(hlist)]
+        # df_res["EZ_on"]=model.EZ_on.extract_values()
+        df_res["EZ_in"] = model.EZ_E_in.extract_values()
+        df_res["EZ_out"] = model.EZ_E_out.extract_values()
+
+        df_res["BESS_in"] = model.BESS_in.extract_values()
+        df_res["BESS_charge"] = model.BESS_charge.extract_values()
+        df_res["BESS_out"] = model.BESS_out.extract_values()
+        df_res["BESS_discharge"] = model.BESS_discharge.extract_values()
+        df_res["BESS_storage"] = model.BESS_st.extract_values()
+        df_res["BESS_idle state"] = model.BESS_idle.extract_values()
+
+        # %%
+
+        # no load--> no 'EZ_out'
+        # df_res.index = np.arange(1, len(hlist)+1, 1)
+        # df_res[['PV', 'EZ_in', 'BESS_in', 'BESS_out', 'BESS_storage']].plot(subplots=True,
+        #                                                                     kind="bar", layout=(3, 2), edgecolor="k", legend=False,
+        #                                                                     ylabel="$[W]$")
+
+        # print(f"objective value is {value(model.obj2)}")
+        # # print(f"EZ size is {value(model.EZ_size)}")
+
+        # df_plot = pd.DataFrame(index=df_res.index)
+        # df_plot['PV'] = df_res["PV"]
+        # df_plot['EZ_in'] = -df_res["EZ_in"]
+
+        # df_plot['BESS_in'] = -df_res["BESS_in"]
+        # # df_plot['EZ_out']=df_res["EZ_out"]
+        # df_plot['BESS_out'] = df_res["BESS_out"]
+
+        # # color_dict = {'PV': 'orange', 'EZ_in': 'green', 'Column3': 'green'}
+
+        # df_plot.plot.bar(stacked=True, edgecolor="black")
+        # ax = plt.gca()
+        # ax.set_ylabel("[W]")
+        # plt.grid(axis="y", linestyle='--', linewidth=0.5, color="k")
+        # plt.legend(fancybox=False, edgecolor="k")
+        # # (df_res["load"]*0.1).plot(ax=ax)
+
+        # # plt.xticks(rotation=0)
+        # plt.title(
+        #     f"{j} EZ {round(value(model.EZ_size))} W \n  BESS:{round(value(model.BESS_power))} W with {round(value(model.BESS_cap))} Wh ")
+
+        # plt.savefig("Scheduling.png", dpi=300)
+
+        # %% plot disabled
+        # df_plot["lf EZ"] = round(100*(df_res["EZ_in"]/model.EZ_size.value))
+
+        # fig, ax = plt.subplots()
+
+        # bars = ax.bar(df_plot["lf EZ"].index, df_plot["lf EZ"],
+        #               edgecolor="k", label="Load factor", alpha=0.7)
+        # for bar in bars:
+        #     if bar.get_height() == 100:
+        #         bar.set_hatch('X')
+        #         bar.set_facecolor('#ff7f0e')
+
+        # ax.bar_label(bars)
+        # plt.xticks(np.arange(4, 25, 4))
+
+        # plt.ylim(i*100-10, 100+5)
+
+        # plt.ylabel("EZ load factor [%]")
+        # plt.xlabel("Hours")
+        # plt.title(f"{j}")
+
+        # plt.savefig("load factor.png", dpi=300)
+
+    # %% grouping values
+        df_summary.loc[j] = [model.EZ_size.extract_values()[None],
+                             model.BESS_cap.extract_values()[None],
+                             model.BESS_power.extract_values()[None], step]
+
+    df_summary["minimum load [kW]"] = df_summary.apply(
+        lambda x: x["EZ size (W)"]*x["minimum lf"], axis=1)
+    return df_summary
+
+# df_summary[df_summary['EZ size (W)']==df_summary['EZ size (W)'].min()]
 
 
 # %%
-if days <= 7:
 
-    # df_res.plot(subplots=True,kind="bar",layout=(5,2),edgecolor="k",legend=False)
-
-    # no load--> no 'EZ_out'
-    df_res.index = np.arange(1, 24+1, 1)
-    df_res[['PV', 'EZ_in', 'BESS_in', 'BESS_out', 'BESS_storage']].plot(subplots=True,
-                                                                        kind="bar", layout=(3, 2), edgecolor="k", legend=False,
-                                                                        ylabel="$[W]$")
-
-    # fig, axes=plt.subplots(nrows=3,ncols=2,constrained_layout=True)
-
-    # #PV
-    # axes[0, 0].bar(df_res.index, df_res["PV"])
-    # axes[0, 1].axis('off')
-
-    print(f"objective value is {value(model.obj2)}")
-    # print(f"EZ size is {value(model.EZ_size)}")
-
-    # %%
-    df_plot = pd.DataFrame(index=df_res.index)
-    df_plot['PV'] = df_res["PV"]
-    df_plot['EZ_in'] = -df_res["EZ_in"]
-
-    df_plot['BESS_in'] = -df_res["BESS_in"]
-    # df_plot['EZ_out']=df_res["EZ_out"]
-    df_plot['BESS_out'] = df_res["BESS_out"]
-
-    # color_dict = {'PV': 'orange', 'EZ_in': 'green', 'Column3': 'green'}
-
-    df_plot.plot.bar(stacked=True, edgecolor="black")
-    ax = plt.gca()
-    plt.grid(axis="y", linestyle='--', linewidth=0.5, color="k")
-    plt.legend(fancybox=False, edgecolor="k")
-    # (df_res["load"]*0.1).plot(ax=ax)
-
-    # plt.xticks(rotation=0)
-    plt.title(
-        f"EZ {round(value(model.EZ_size))} W \n  BESS:{round(value(model.BESS_power))} W with {round(value(model.BESS_cap))} Wh ")
-else:
-    df_res.plot(subplots=True)
+df_all = pd.DataFrame(columns=[['EZ size (W)', 'BESS Cap [Wh]', 'BESS Power [W]', 'minimum lf',
+                                'minimum load [kW]']])
 
 
+# Specify the directory you want to list subfolders for
+directory_path = 'PV data\\Clusters\\'
+
+# Get a list of subfolders in the specified directory
+subfolders = [f for f in os.listdir(directory_path) if os.path.isdir(
+    os.path.join(directory_path, f))]
+
+# # Now, 'subfolders' contains a list of subfolder names within the specified directory
+# print(subfolders)
+
+for i in tqdm(subfolders):
+    df = pd.read_csv(f"PV data\Clusters\{i}\{i}_clusters.csv", index_col=0)
+    d = df_summary(df)
+    df_all.loc[f"{i}"] = d[d['EZ size (W)'] ==
+                           d['EZ size (W)'].min()].iloc[0, :].tolist()
+
+# df_all.to_csv("Results\\No load\\summar.csv")
 # %%
-df_plot["lf EZ"] = round(100*(df_res["EZ_in"]/model.EZ_size.value))
-
-fig, ax = plt.subplots()
-
-
-bars = ax.bar(df_plot["lf EZ"].index, df_plot["lf EZ"],
-              edgecolor="k", label="Load factor", alpha=0.9)
-for bar in bars:
-    if bar.get_height() == 100:
-        bar.set_hatch('X')
-        bar.set_facecolor('#ff7f0e')
-
-ax.bar_label(bars)
-plt.xticks(np.arange(4, 25, 4))
-
-
-plt.ylim(i*100-10, 100+5)
-
-plt.ylabel("EZ load factor [%]")
-plt.xlabel("Hours")
-
-
-# %%
-
-# nature_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC']
-
-
-# from pylab import *
-# # plt.rcParams['image.cmap'] = 'gray'
-
-# # cmap = cm.get_cmap('tab20', 24)    # PiYG
-
-# # # Get the default color map
-# # cmap = plt.cm.get_cmap(24)
-
-# cmap=plt.cm.get_cmap()
-
-# HEX_codes=[]
-# for i in range(cmap.N):
-#     rgba = cmap(i)
-#     # rgb2hex accepts rgb or rgba
-#     HEX_codes.append(matplotlib.colors.rgb2hex(rgba))
-#     print(matplotlib.colors.rgb2hex(rgba))
