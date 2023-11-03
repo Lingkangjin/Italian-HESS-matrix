@@ -426,7 +426,7 @@ def df_summary(d, saving_fold):
         df_res.index = np.arange(1, len(hlist)+1, 1)
         df_res[['PV', 'EZ_in', 'BESS_in', 'BESS_out', 'BESS_storage', "Load"]].plot(subplots=True,
                                                                                     kind="bar", layout=(3, 2), edgecolor="k", legend=False,
-                                                                                    ylabel="$[W]$")
+                                                                                    ylabel="$[Wh]$")
         plt.suptitle(
             f"{name.split('.')[0]} "+j)
         plt.savefig(saving_fold+f"{name.split('.')[0]}"+j+".png", dpi=300)
@@ -447,7 +447,7 @@ def df_summary(d, saving_fold):
 
         df_plot.plot.bar(stacked=True, edgecolor="black")
         ax = plt.gca()
-        ax.set_ylabel("[W]")
+        ax.set_ylabel("[Wh]")
         plt.grid(axis="y", linestyle='--', linewidth=0.5, color="k")
         plt.legend(fancybox=False, edgecolor="k")
         # (df_res["load"]*0.1).plot(ax=ax)

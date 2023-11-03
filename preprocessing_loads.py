@@ -21,6 +21,18 @@ regions = ['Abruzzo', 'Basilicata', 'Calabria', 'Campania', 'Emilia-Romagna',
            'Molise', 'Piemonte', 'Puglia', 'Sardegna', 'Sicilia', 'Toscana',
            'Trentino-Alto Adige', 'Umbria', "Valle d'Aosta", 'Veneto']
 
+# plt.rcParams["figure.constrained_layout.use"] = True
+
+plt.rcParams['legend.fancybox'] = False
+plt.rcParams['legend.fontsize'] = 8
+
+plt.rcParams['legend.edgecolor'] = '0.8'
+# plt.rcParams['legend.frameon'] = False
+
+plt.rcParams.update({'figure.autolayout': True})
+
+
+plt.rcParams['legend.title_fontsize'] = 10
 # %%
 d = HESS("Abruzzo").load()
 
@@ -120,4 +132,64 @@ for reg in tqdm(regions):
             # axes[i, j].legend(fancybox=False,edgecolor="k")
 
     plt.suptitle(reg+" residential load: power class <3 kW")
-    plt.savefig(reg+".png", dpi=300)
+    # plt.savefig(reg+".png", dpi=300)
+# %%
+
+
+observ = []
+regs = []
+for reg in tqdm(regions):
+    d = HESS(reg).load()
+
+    d["day"] = d.index.dayofyear
+
+    observ.extend(d.groupby("day").sum().iloc[:, 0].tolist())
+    regs.extend([reg]*len(d.groupby("day").sum().iloc[:, 0].tolist()))
+
+df_kde = pd.DataFrame()
+df_kde["Regions"] = regs
+df_kde["Average daily load [kWh]"] = observ
+# %%
+
+
+region_classification = {
+    'North': ['Lombardia', 'Piemonte', 'Trentino-Alto Adige', "Valle d'Aosta", 'Veneto', 'Liguria', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
+    'Central': ['Lazio', 'Marche', 'Umbria', 'Toscana', 'Abruzzo'],
+    'South': ['Campania', 'Sicilia', 'Calabria', 'Basilicata', 'Puglia', 'Molise', 'Sardegna']
+}
+
+fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(8, 16))
+
+for j, i in enumerate(region_classification.keys()):
+    sns.kdeplot(data=df_kde[df_kde["Regions"].isin(
+        region_classification[i])], x="Average daily load [kWh]", hue="Regions", ax=axes[j])
+    axes[j].set_title(f"{i} regions")
+plt.suptitle("Residential end-users, power class 1.5-3.0 kW")
+plt.savefig("Daily load kde.png", dpi=300)
+
+# axes[0].set_title(f"{i} regions")
+
+# %%
+# plt.hist(d.groupby("day").sum(),density=True,edgecolor="k")
+# ax=plt.gca()
+# sns.kdeplot(data=d.groupby("day").sum(),x="load (kWh)",ax=ax)
+
+
+df_kde_mean = df_kde.groupby("Regions").mean(
+).sort_values(by="Average daily load [kWh]")
+
+
+plt.figure()
+ax = plt.gca()
+sns.barplot(x="Average daily load [kWh]", y=df_kde_mean.index,
+            data=df_kde_mean, palette="coolwarm",
+            order=df_kde_mean.index,
+            edgecolor="k",
+            ax=ax)
+ax.set_xlim(2, 6)
+ax.set_title("Residential end-users\n power class 1.5-3.0 kW")
+
+plt.savefig("Daily average load.png", dpi=300)
+
+
+# plt.barh(df_kde_mean.index,df_kde_mean["Daily load [kWh]"],edgecolor="k")

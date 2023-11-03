@@ -61,7 +61,7 @@ for i in df_sum.columns:
     )
 
     # ax.set_title("Italian Regional resouces")
-
+    plt.tight_layout()
     plt.savefig(f"{i}.png", dpi=300)
 
 
