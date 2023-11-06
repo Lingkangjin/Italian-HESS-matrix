@@ -24,7 +24,7 @@ regions = ['Abruzzo', 'Basilicata', 'Calabria', 'Campania', 'Emilia-Romagna',
 # plt.rcParams["figure.constrained_layout.use"] = True
 
 plt.rcParams['legend.fancybox'] = False
-plt.rcParams['legend.fontsize'] = 8
+plt.rcParams['legend.fontsize'] = 9
 
 plt.rcParams['legend.edgecolor'] = '0.8'
 # plt.rcParams['legend.frameon'] = False
@@ -158,7 +158,7 @@ region_classification = {
     'South': ['Campania', 'Sicilia', 'Calabria', 'Basilicata', 'Puglia', 'Molise', 'Sardegna']
 }
 
-fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(8, 16))
+fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(10, 8))
 
 for j, i in enumerate(region_classification.keys()):
     sns.kdeplot(data=df_kde[df_kde["Regions"].isin(
