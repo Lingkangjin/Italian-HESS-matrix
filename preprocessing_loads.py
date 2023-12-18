@@ -24,13 +24,13 @@ regions = ['Abruzzo', 'Basilicata', 'Calabria', 'Campania', 'Emilia-Romagna',
 # plt.rcParams["figure.constrained_layout.use"] = True
 
 plt.rcParams['legend.fancybox'] = False
-plt.rcParams['legend.fontsize'] = 9
 
 plt.rcParams['legend.edgecolor'] = '0.8'
 # plt.rcParams['legend.frameon'] = False
 
 plt.rcParams.update({'figure.autolayout': True})
 
+plt.rcParams['legend.fontsize'] = 9
 
 plt.rcParams['legend.title_fontsize'] = 10
 # %%
@@ -153,17 +153,49 @@ df_kde["Average daily load [kWh]"] = observ
 
 
 region_classification = {
-    'North': ['Lombardia', 'Piemonte', 'Trentino-Alto Adige', "Valle d'Aosta", 'Veneto', 'Liguria', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
-    'Central': ['Lazio', 'Marche', 'Umbria', 'Toscana', 'Abruzzo'],
-    'South': ['Campania', 'Sicilia', 'Calabria', 'Basilicata', 'Puglia', 'Molise', 'Sardegna']
+    'North': ['Lombardy', 'Piedmont', 'Trentino-Alto Adige', "Aosta Valley", 'Veneto', 'Liguria', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
+    'Central': ['Lazio', 'Marche', 'Umbria', 'Tuscany', 'Abruzzo'],
+    'South': ['Campania', 'Sicily', 'Calabria', 'Basilicata', 'Apulia', 'Molise', 'Sardinia']
 }
 
-fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(10, 8))
+
+italian_to_english = {'Abruzzo': 'Abruzzo',
+                      'Basilicata': 'Basilicata',
+                      'Calabria': 'Calabria',
+                      'Campania': 'Campania',
+                      'Emilia-Romagna': 'Emilia-Romagna',
+                      'Friuli-Venezia Giulia': 'Friuli-Venezia Giulia',
+                      'Lazio': 'Lazio',
+                      'Liguria': 'Liguria',
+                      'Lombardia': 'Lombardy',
+                      'Marche': 'Marche',
+                      'Molise': 'Molise',
+                      'Piemonte': 'Piedmont',
+                      'Puglia': 'Apulia',
+                      'Sardegna': 'Sardinia',
+                      'Sicilia': 'Sicily',
+                      'Toscana': 'Tuscany',
+                      'Trentino-Alto Adige': 'Trentino-Alto Adige',
+                      'Umbria': 'Umbria',
+                      "Valle d'Aosta": "Aosta Valley",
+                      'Veneto': 'Veneto'}
+
+df_kde["Regions"] = df_kde["Regions"].replace(italian_to_english)
+
+
+plt.rcParams['legend.fontsize'] = 12
+
+plt.rcParams['legend.title_fontsize'] = 14
+# fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(10, 8))
+fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(8, 9.5))
+
 
 for j, i in enumerate(region_classification.keys()):
     sns.kdeplot(data=df_kde[df_kde["Regions"].isin(
         region_classification[i])], x="Average daily load [kWh]", hue="Regions", ax=axes[j])
     axes[j].set_title(f"{i} regions")
+
+
 plt.suptitle("Residential end-users, power class 1.5-3.0 kW")
 plt.savefig("Daily load kde.png", dpi=300)
 
@@ -179,7 +211,7 @@ df_kde_mean = df_kde.groupby("Regions").mean(
 ).sort_values(by="Average daily load [kWh]")
 
 
-plt.figure()
+plt.figure(figsize=(8, 10))
 ax = plt.gca()
 sns.barplot(x="Average daily load [kWh]", y=df_kde_mean.index,
             data=df_kde_mean, palette="coolwarm",

@@ -42,6 +42,8 @@ nature_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2',
 
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["figure.constrained_layout.use"] = True
+params = {'mathtext.default': 'regular'}
+plt.rcParams.update(params)
 
 
 # %%
@@ -412,21 +414,21 @@ def df_summary(d, saving_fold):
                         for i in (de["PV"]*1000).tolist()]
         df_res["Load"] = (de['load (kWh)']*1000).tolist()
         # df_res["EZ_on"]=model.EZ_on.extract_values()
-        df_res["EZ_in"] = model.EZ_E_in.extract_values()
+        df_res["Electrolyser"] = model.EZ_E_in.extract_values()
         df_res["EZ_out"] = model.EZ_E_out.extract_values()
 
-        df_res["BESS_in"] = model.BESS_in.extract_values()
+        df_res["$Battery_{in}$"] = model.BESS_in.extract_values()
         df_res["BESS_charge"] = model.BESS_charge.extract_values()
-        df_res["BESS_out"] = model.BESS_out.extract_values()
+        df_res["$Battery_{out}$"] = model.BESS_out.extract_values()
         df_res["BESS_discharge"] = model.BESS_discharge.extract_values()
-        df_res["BESS_storage"] = model.BESS_st.extract_values()
+        df_res["$Battery_{storage}$"] = model.BESS_st.extract_values()
         df_res["BESS_idle state"] = model.BESS_idle.extract_values()
 
         # %%
         df_res.index = np.arange(1, len(hlist)+1, 1)
-        df_res[['PV', 'EZ_in', 'BESS_in', 'BESS_out', 'BESS_storage', "Load"]].plot(subplots=True,
-                                                                                    kind="bar", layout=(3, 2), edgecolor="k", legend=False,
-                                                                                    ylabel="$[Wh]$")
+        df_res[['PV', 'Electrolyser', '$Battery_{in}$', '$Battery_{out}$', '$Battery_{storage}$', "Load"]].plot(subplots=True,
+                                                                                                                kind="bar", layout=(3, 2), edgecolor="k", legend=False,
+                                                                                                                ylabel="$[Wh]$", figsize=(10, 8))
         plt.suptitle(
             f"{name.split('.')[0]} "+j)
         plt.savefig(saving_fold+f"{name.split('.')[0]}"+j+".png", dpi=300)
@@ -436,11 +438,11 @@ def df_summary(d, saving_fold):
 
         df_plot = pd.DataFrame(index=df_res.index)
         df_plot['PV'] = df_res["PV"]
-        df_plot['EZ_in'] = -df_res["EZ_in"]
+        df_plot['Electrolyser'] = -df_res["Electrolyser"]
 
-        df_plot['BESS_in'] = -df_res["BESS_in"]*eta_BESS
+        df_plot['$Battery_{in}$'] = -df_res["$Battery_{in}$"]*eta_BESS
         # df_plot['EZ_out']=df_res["EZ_out"]
-        df_plot['BESS_out'] = df_res["BESS_out"]*eta_BESS
+        df_plot['$Battery_{out}$'] = df_res["$Battery_{out}$"]*eta_BESS
         df_plot['Load'] = -df_res["Load"]
 
         # color_dict = {'PV': 'orange', 'EZ_in': 'green', 'Column3': 'green'}
@@ -448,17 +450,19 @@ def df_summary(d, saving_fold):
         df_plot.plot.bar(stacked=True, edgecolor="black")
         ax = plt.gca()
         ax.set_ylabel("[Wh]")
+        plt.ylim(-1500, +1500)
+
         plt.grid(axis="y", linestyle='--', linewidth=0.5, color="k")
         plt.legend(fancybox=False, edgecolor="k")
         # (df_res["load"]*0.1).plot(ax=ax)
 
         # plt.xticks(rotation=0)
         plt.title(
-            f"{name.split('.')[0]} "+j+f"  \n {round(model.PV_size.extract_values()[None],2)*1000} W PV, EZ {round(value(model.EZ_size))} W \n  BESS:{round(value(model.BESS_power))} W with {round(value(model.BESS_cap))} Wh ")
+            f"{name.split('.')[0]} "+j+f"  \n {round(model.PV_size.extract_values()[None],2)*1000} W PV, Electrolyser {round(value(model.EZ_size))} W \n  Battery:{round(value(model.BESS_power))} W with {round(value(model.BESS_cap))} Wh ")
         df_summary.loc[j] = [round(model.PV_size.extract_values()[None], 2)*1000,
                              model.EZ_size.extract_values()[None],
                              model.BESS_cap.extract_values()[None],
-                             model.BESS_power.extract_values()[None], step, df_res["EZ_in"].sum()/(1000*33.33)]
+                             model.BESS_power.extract_values()[None], step, df_res["Electrolyser"].sum()/(1000*33.33)]
         plt.savefig(
             saving_fold+f"{name.split('.')[0]}"+j+"_balancing.png", dpi=300)
 
@@ -489,6 +493,8 @@ for name in names:
     d = clusters(loads, df_PV)
 
     df_summ = df_summary(d, saving_fold+f"{name.split('.')[0]}\\")
+
+    plt.close("all")
 
     de_tot.loc[f"{name.split('.')[0]}"] = df_summ[df_summ['EZ size (W)'] ==
                                                   df_summ['EZ size (W)'].min()].iloc[0, :].tolist()

@@ -147,13 +147,40 @@ plt.savefig("Italian monthly average prod.png", dpi=300)
 # %%
 
 region_classification = {
-    'North': ['Lombardia', 'Piemonte', 'Trentino-Alto Adige', "Valle d'Aosta", 'Veneto', 'Liguria', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
-    'Central': ['Lazio', 'Marche', 'Umbria', 'Toscana', 'Abruzzo'],
-    'South': ['Campania', 'Sicilia', 'Calabria', 'Basilicata', 'Puglia', 'Molise', 'Sardegna']
+    'North': ['Lombardy', 'Piedmont', 'Trentino-Alto Adige', "Aosta Valley", 'Veneto', 'Liguria', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
+    'Central': ['Lazio', 'Marche', 'Umbria', 'Tuscany', 'Abruzzo'],
+    'South': ['Campania', 'Sicily', 'Calabria', 'Basilicata', 'Apulia', 'Molise', 'Sardinia']
 }
 
 
+italian_to_english = {'Abruzzo': 'Abruzzo',
+                      'Basilicata': 'Basilicata',
+                      'Calabria': 'Calabria',
+                      'Campania': 'Campania',
+                      'Emilia-Romagna': 'Emilia-Romagna',
+                      'Friuli-Venezia Giulia': 'Friuli-Venezia Giulia',
+                      'Lazio': 'Lazio',
+                      'Liguria': 'Liguria',
+                      'Lombardia': 'Lombardy',
+                      'Marche': 'Marche',
+                      'Molise': 'Molise',
+                      'Piemonte': 'Piedmont',
+                      'Puglia': 'Apulia',
+                      'Sardegna': 'Sardinia',
+                      'Sicilia': 'Sicily',
+                      'Toscana': 'Tuscany',
+                      'Trentino-Alto Adige': 'Trentino-Alto Adige',
+                      'Umbria': 'Umbria',
+                      "Valle d'Aosta": "Aosta Valley",
+                      'Veneto': 'Veneto'}
+
+
+df_year = df_year.reset_index()
+df_year['index'] = df_year['index'].replace(italian_to_english)
+df_year = df_year.set_index('index')
+
 df_year.loc[region_classification['North']]
+
 
 plt.rcParams.update({'legend.fontsize': 14})
 
@@ -168,7 +195,8 @@ for i, j in enumerate(region_classification.keys()):
         ax[i].bar_label(container, fmt='%.2f', fontsize="11")
     ax[i].legend([j])
     ax[i].set_xlim(0.155, 0.20)
-    ax[i].set_xlabel("Yearly capacity factor")
+    ax[i].set_xlabel("Yearly capacity factor [-]")
+    ax[i].set_ylabel("")
 
 plt.suptitle("Regional PV capacity factor")
 plt.savefig("PV_capacity factor.png", dpi=300)

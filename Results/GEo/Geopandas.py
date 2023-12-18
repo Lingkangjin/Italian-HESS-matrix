@@ -24,7 +24,8 @@ plt.rcParams.update({'font.size': 14, 'font.family': "Arial"})
 
 Ita = gpd.read_file(path+'bb489fv3314.shp')
 
-
+params = {'mathtext.default': 'regular'}
+plt.rcParams.update(params)
 # %% shp file
 
 # Chile = gpd.read_file('chl_admbndl_admALL_bcn_itos_20211008.shp')
@@ -39,6 +40,19 @@ Ita.sort_values(by="name_1", inplace=True)
 # %%
 
 df_sum = pd.read_csv("df_all.csv", index_col=0)
+
+
+column_mapping = {
+    'PV size (W)': 'PV size [W]',
+    'EZ size (W)': 'Electrolyser size [W]',
+    'BESS Cap (Wh)': 'Battery Capacity [Wh]',
+    'BESS Power (W)': 'Battery Power [W]',
+    'Minimum EZ load (W)': 'Minimum Electrolyser load [W]',
+    'Produced $H_2$ (kg)': "Daily produced $H_2$ [kg]"
+}
+
+# Rename the columns based on the mapping
+df_sum = df_sum.rename(columns=lambda col: column_mapping.get(col, col))
 
 for i in df_sum.columns:
 
@@ -69,6 +83,23 @@ for i in df_sum.columns:
 
 # %%
 
+
+Ita.name_1.replace('Piemonte', 'Piedmont', inplace=True)
+Ita.name_1.replace('Lombardia', 'Lombardy', inplace=True)
+Ita.name_1.replace('Sardegna', 'Sardinia', inplace=True)
+
+Ita.name_1.replace("Puglia", "Apulia", inplace=True)
+Ita.name_1.replace("Sicilia", "Sicily", inplace=True)
+Ita.name_1.replace('Toscana', 'Tuscany', inplace=True)
+Ita.name_1.replace("Valle d'Aosta", "Aosta Valley", inplace=True)
+
+
+region_classification = {
+    'North': ['Lombardy', 'Piedmont', 'Trentino-Alto Adige', "Aosta Valley", 'Veneto', 'Liguria', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
+    'Central': ['Lazio', 'Marche', 'Umbria', 'Tuscany', 'Abruzzo'],
+    'South': ['Campania', 'Sicily', 'Calabria', 'Basilicata', 'Apulia', 'Molise', 'Sardinia']
+}
+
 plt.figure(figsize=(15, 8))
 ax = plt.gca()
 Ita.plot(color="white", edgecolor="k", linewidth=0.5, ax=ax)
@@ -76,11 +107,11 @@ ax.set_xlabel("Longitude")
 ax.set_ylabel("Latitude")
 
 
-region_classification = {
-    'North': ['Lombardia', 'Piemonte', 'Trentino-Alto Adige', "Valle d'Aosta", 'Veneto', 'Liguria', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
-    'Central': ['Lazio', 'Marche', 'Umbria', 'Toscana', 'Abruzzo'],
-    'South': ['Campania', 'Sicilia', 'Calabria', 'Basilicata', 'Puglia', 'Molise', 'Sardegna']
-}
+# region_classification = {
+#     'North': ['Lombardia', 'Piemonte', 'Trentino-Alto Adige', "Valle d'Aosta", 'Veneto', 'Liguria', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
+#     'Central': ['Lazio', 'Marche', 'Umbria', 'Toscana', 'Abruzzo'],
+#     'South': ['Campania', 'Sicilia', 'Calabria', 'Basilicata', 'Puglia', 'Molise', 'Sardegna']
+# }
 
 
 inverted_region_classification = {region: region_type for region_type,
@@ -90,7 +121,7 @@ Ita["Zone"] = Ita.apply(
     lambda x: inverted_region_classification[x['name_1']], axis=1)
 
 Ita.apply(lambda x: ax.annotate(
-    text=x['name_1'], xy=x.geometry.centroid.coords[0], fontsize=6, ha='center'), axis=1)
+    text=x['name_1'], xy=x.geometry.centroid.coords[0], fontsize=9, ha='center'), axis=1)
 
 
 Ita[Ita["Zone"] == "North"].plot(
