@@ -2,24 +2,15 @@
 """
 Created on Thu Oct 19 15:26:01 2023
 
-@author: utente
+@author: Lingkang Jin
 """
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import holidays
-import datetime
 
 from pyomo.environ import *
 from pyomo import environ as pyo
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 from HESS_reg_class import *
 
-from tqdm import tqdm
 import os
 
 from sklearn.cluster import KMeans
@@ -221,14 +212,14 @@ def clusters(loads, df_PV):
 
         ll = loads.set_index("Day")
         e = ll.loc[index]
-        e.groupby("Hour").mean()
+        e.drop(columns=['Days']).groupby("Hour").mean()
 
         p = df_PV.set_index("Day")
         gen = p.loc[index]
         p.groupby("Hour").mean()
 
         d[f"Cluster {i}"] = pd.concat(
-            [e.groupby("Hour").mean(), p.groupby("Hour").mean()], axis=1)
+            [e.drop(columns=['Days']).groupby("Hour").mean(), p.groupby("Hour").mean()], axis=1)
 
     return d
 
