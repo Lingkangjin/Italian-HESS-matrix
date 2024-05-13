@@ -9,36 +9,56 @@ Created on Thu Oct 19 15:26:01 2023
 from pyomo.environ import *
 from pyomo import environ as pyo
 
-from HESS_reg_class import *
+from src.HESS_class import HESS
 
 import os
+import pandas as pd
+import geopandas as gpd
+
 
 from sklearn.cluster import KMeans
 import numpy as np
 
+from src.PV_data_request import PV_data
 
-from sklearn.metrics import silhouette_score, silhouette_samples, davies_bouldin_score
+from sklearn.metrics import silhouette_score, silhouette_samples
 from tqdm import tqdm
 
-from kneed import KneeLocator, DataGenerator as dg
+from kneed import KneeLocator
 
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
 # %%
-
+#
 nature_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2',
                  '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC']
-
-
-plt.rcParams["font.family"] = "Arial"
-plt.rcParams["figure.constrained_layout.use"] = True
-params = {'mathtext.default': 'regular'}
-plt.rcParams.update(params)
+#
+#
+# plt.rcParams["font.family"] = "Arial"
+# plt.rcParams["figure.constrained_layout.use"] = True
+# params = {'mathtext.default': 'regular'}
+# plt.rcParams.update(params)
 
 
 # %%
-out = "PV data\\Processed\\"
+out = os.path.join(os.getcwd(),
+                   "PV data",
+                    "Processed")
+
+
+path=os.path.join(os.getcwd(),
+                  "Input_data",
+                  "stanford-bb489fv3314-shapefile",
+                  'bb489fv3314.shp')
+
+
+
+
+
+Ita = gpd.read_file(path)
+
+
 # %%
 
 
@@ -51,6 +71,30 @@ for path, subdirs, files in os.walk(out):
     else:
         pass
 
+italian_to_english = {
+    'Abruzzo': 'Abruzzo',
+    'Basilicata': 'Basilicata',
+    'Calabria': 'Calabria',
+    'Campania': 'Campania',
+    'Emilia-Romagna': 'Emilia-Romagna',
+    'Friuli-Venezia Giulia': 'Friuli-Venezia Giulia',
+    'Lazio': 'Lazio',
+    'Liguria': 'Liguria',
+    'Lombardia': 'Lombardy',
+    'Marche': 'Marche',
+    'Molise': 'Molise',
+    'Piemonte': 'Piedmont',
+    'Puglia': 'Apulia',
+    'Sardegna': 'Sardinia',
+    'Sicilia': 'Sicily',
+    'Toscana': 'Tuscany',
+    'Trentino-Alto Adige': 'Trentino-Alto Adige/Südtirol',
+    'Umbria': 'Umbria',
+    "Valle d'Aosta": 'Aosta Valley',
+    'Veneto': 'Veneto'
+}
+
+
 # %%
 
 
@@ -59,8 +103,16 @@ def loading(name):
     loads = HESS(name.split(".")[0]).load()
     loads["Day"] = loads.index.day_of_year
 
-    df_PV = pd.DataFrame({'PV': pd.read_csv(
-        out+f"{name}", index_col=0, parse_dates=True)["electricity"]})
+    english_name_region=italian_to_english[name.split(".")[0]]
+
+    df_PV = PV_data(lat=Ita[Ita.name_1 == english_name_region].centroid.x,
+                   long=Ita[Ita.name_1 == english_name_region].centroid.y,
+                   cap=None,
+                   Hemisphere='North',
+                   year=2019).get_data()
+    #
+    # df_PV = pd.DataFrame(
+    #     {'PV': pd.read_csv(os.path.join(out, f"{name}"), index_col=0, parse_dates=True)["electricity"]})
 
     df_PV["Day"] = df_PV.index.day_of_year
 
@@ -196,7 +248,8 @@ class ML_cluser_TS():
 
 def clusters(loads, df_PV):
     df_regroup = pd.DataFrame(index=np.arange(1, 366, 1))
-    df_regroup["PV"] = df_PV.groupby(by="Day").sum()["PV"].values
+    df_regroup["PV"] = df_PV.groupby("Day").sum()[df_PV.columns[0]].values
+
     df_regroup["load"] = loads.groupby("Day").sum()["load (kWh)"].values
 
     a = ML_cluser_TS(df_regroup)
@@ -464,7 +517,9 @@ def df_summary(d, saving_fold):
 # %%
 
 
-saving_fold = "Results\\With load\\"
+saving_fold = os.path.join(os.getcwd(),
+                           "Results",
+                           "With load")
 
 de_tot = pd.DataFrame(columns=[["PV size (W)", "EZ size (W)", "BESS Cap [Wh]",
                       "BESS Power [W]", "minimum lf", "Produced H2 (kg)", "minimum EZ load (W)"]])

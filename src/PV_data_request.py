@@ -5,16 +5,15 @@ import json
 from io import StringIO
 import matplotlib
 
-matplotlib.use('TkAgg')
 
 
-class PV_data:
+class PV_data():
     token = '168f2fc6d2e5e141d1d5c7bad57cd31e7aa30549'
     api_base = 'https://www.renewables.ninja/api/'
     default_value_cap =1
 
     def __init__(self, lat, long ,cap ,Hemisphere ,year):
-        self.lat = lat
+        self.lat =lat
         self.long = long
         self.cap = cap if cap is not None else self.default_value_cap
         self.Hemisphere = Hemisphere
@@ -60,9 +59,9 @@ class PV_data:
         metadata = parsed_response['metadata']
         return data
 
-
-data = PV_data(lat=30,
-                       long=40,
-                       cap=None,
-                       Hemisphere='North',
-                       year=2019).get_data()
+#
+# data = PV_data(lat=30,
+#                        long=40,
+#                        cap=None,
+#                        Hemisphere='North',
+#                        year=2019).get_data()

@@ -14,7 +14,32 @@ warnings.filterwarnings("ignore")
 
 from tqdm import tqdm
 
+from src.Geopandas import Geoplot
 
+#%%
+
+
+path=os.path.join(os.getcwd(),
+                  "Input_data",
+                  "stanford-bb489fv3314-shapefile",
+                  'bb489fv3314.shp')
+
+
+
+
+
+Ita = gpd.read_file(path)
+
+
+data=PV_data(lat=Ita[Ita.name_1=='Apulia'].centroid.x,
+            long=Ita[Ita.name_1=='Apulia'].centroid.y,
+            cap=None,
+            Hemisphere='North',
+            year=2019).get_data()
+
+
+# Geoplot()
+ok
 
 # %%
 #
