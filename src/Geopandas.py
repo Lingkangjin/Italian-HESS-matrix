@@ -21,18 +21,14 @@ path=os.path.join(os.getcwd(),
 
 nature_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2',
                  '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC']
-#
-# plt.rcParams.update({'font.size': 14, 'font.family': "Arial"})
-# params = {'mathtext.default': 'regular'}
-# plt.rcParams.update(params)
 
 
 
-Ita = gpd.read_file(path)
 
 # %%
 
 def Geoplot():
+    Ita = gpd.read_file(path)
 
     Ita.name_1.replace("Apulia", "Puglia", inplace=True)
     Ita.name_1.replace("Sicily", "Sicilia", inplace=True)
@@ -40,10 +36,8 @@ def Geoplot():
     Ita.sort_values(by="name_1", inplace=True)
     df_sum= pd.read_csv(os.path.join(os.getcwd(),
                                      "Results",
-                                     "GEo",
-                                     "df_all.csv"),
+                                     "With loaddf_all.csv"),
                         index_col=0)
-    # df_sum = pd.read_csv("../Results/GEo/df_all.csv", index_col=0)
 
 
     column_mapping = {
@@ -80,7 +74,8 @@ def Geoplot():
 
         # ax.set_title("Italian Regional resouces")
         plt.tight_layout()
-        # plt.savefig(f"{i}.png", dpi=300)
+        plt.savefig(os.path.join('Results',
+            f"{i}.png"), dpi=300)
 
 
     # plt.figure(figsize=(15, 8))
@@ -129,6 +124,5 @@ def Geoplot():
 
     ax.set_axis_off()
 
-    # plt.savefig("Italian_map.png", dpi=300)
+    plt.savefig(os.path.join('Results', "Italian_map.png"), dpi=300)
 
-    plt.show()

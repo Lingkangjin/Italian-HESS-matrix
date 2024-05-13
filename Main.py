@@ -8,7 +8,6 @@ from geodatasets import get_path  # This is a helper function to get the path to
 path = get_path("naturalearth.land")
 df = gpd.read_file(path)
 
-from src.PV_data_request import PV_data
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -16,30 +15,81 @@ from tqdm import tqdm
 
 from src.Geopandas import Geoplot
 
+from src.Opt_with_load import *
+
+# %%
+
+
+plt.rcParams["font.family"] = "Times New Roman"
+# plt.rcParams["figure.constrained_layout.use"] = True
+params = {'mathtext.default': 'regular'}
+plt.rcParams.update(params)
+
+
+
 #%%
 
+italian_to_english = {
+    'Abruzzo': 'Abruzzo',
+    'Basilicata': 'Basilicata',
+    'Calabria': 'Calabria',
+    'Campania': 'Campania',
+    'Emilia-Romagna': 'Emilia-Romagna',
+    'Friuli-Venezia Giulia': 'Friuli-Venezia Giulia',
+    'Lazio': 'Lazio',
+    'Liguria': 'Liguria',
+    'Lombardia': 'Lombardia',
+    'Marche': 'Marche',
+    'Molise': 'Molise',
+    'Piemonte': 'Piemonte',
+    'Puglia': 'Apulia',
+    'Sardegna': 'Sardegna',
+    'Sicilia': 'Sicily',
+    'Toscana': 'Toscana',
+    'Trentino-Alto Adige': 'Trentino-Alto Adige',
+    'Umbria': 'Umbria',
+    "Valle d'Aosta": "Valle d'Aosta",
+    'Veneto': 'Veneto'
+}
 
-path=os.path.join(os.getcwd(),
-                  "Input_data",
-                  "stanford-bb489fv3314-shapefile",
-                  'bb489fv3314.shp')
+
+#
+# saving_fold = os.path.join(os.getcwd(),
+#                            "Results",
+#                            "With load")
+#
+# de_tot = pd.DataFrame(columns=[["PV size (W)", "EZ size (W)", "BESS Cap [Wh]",
+#                       "BESS Power [W]", "minimum lf", "Produced H2 (kg)", "minimum EZ load (W)"]])
+#
+# for name in italian_to_english.keys() :
+#     print(name+" Started")
+#     print("-----------")
+#
+#     if not os.path.exists(os.path.join(saving_fold,name)):
+#
+#         # if the demo_folder directory is not present
+#         # then create it.
+#         os.makedirs(os.path.join(saving_fold,name))
+#     else:
+#         print("Folder present")
+#
+#     loads, df_PV = loading(name,italian_to_english)
+#
+#     d = clusters(loads, df_PV)
+#
+#     df_summ = df_summary(d, os.path.join(saving_fold,name),name)
+#
+#     plt.close("all")
+#
+#     de_tot.loc[f"{name.split('.')[0]}"] = df_summ[df_summ['EZ size (W)'] ==
+#                                                   df_summ['EZ size (W)'].min()].iloc[0, :].tolist()
+#
+# de_tot.to_csv(os.path.join(saving_fold,"df_all.csv"))
+
+# %%
 
 
-
-
-
-Ita = gpd.read_file(path)
-
-
-data=PV_data(lat=Ita[Ita.name_1=='Apulia'].centroid.x,
-            long=Ita[Ita.name_1=='Apulia'].centroid.y,
-            cap=None,
-            Hemisphere='North',
-            year=2019).get_data()
-
-
-# Geoplot()
-ok
+Geoplot()
 
 # %%
 #
@@ -79,19 +129,18 @@ ok
 nature_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2',
                  '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC']
 
-plt.rcParams.update({'font.size': 14, 'font.family': "Arial"})
+plt.rcParams.update({'font.size': 14, 'font.family': "Times New Roman"})
 
 params = {'mathtext.default': 'regular'}
 plt.rcParams.update(params)
 
-# %%
+# %% European map
 path = "Input_data\\"
 
 geopd = gpd.read_file(os.path.join(path+'NUTS_RG_20M_2021_4326.shp'))
 # geopd =gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
 
 
-# %%
 plt.figure(figsize=(15, 8))
 ax = plt.gca()
 
@@ -123,7 +172,11 @@ for j,i in enumerate(geopd['CNTR_CODE'].unique()):
 #            color='lightblue',
 #            column='CNTR_CODE', cmap='viridis', legend=True)
 ax.set_xlim(-25, 40)
+ax.set_xlabel('latitude')
 ax.set_ylim(32, 75)
+ax.set_ylabel('longitude')
+plt.savefig('Europe_NUTS.png', dpi=300)
+
 # plt.show()
 #
 #

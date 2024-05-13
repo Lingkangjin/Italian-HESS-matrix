@@ -62,57 +62,37 @@ Ita = gpd.read_file(path)
 # %%
 
 
-names = []
-for path, subdirs, files in os.walk(out):
-    for name in files:
-        if name.endswith('.csv'):
-            print(name)
-            names.append(name)
-    else:
-        pass
 
-italian_to_english = {
-    'Abruzzo': 'Abruzzo',
-    'Basilicata': 'Basilicata',
-    'Calabria': 'Calabria',
-    'Campania': 'Campania',
-    'Emilia-Romagna': 'Emilia-Romagna',
-    'Friuli-Venezia Giulia': 'Friuli-Venezia Giulia',
-    'Lazio': 'Lazio',
-    'Liguria': 'Liguria',
-    'Lombardia': 'Lombardy',
-    'Marche': 'Marche',
-    'Molise': 'Molise',
-    'Piemonte': 'Piedmont',
-    'Puglia': 'Apulia',
-    'Sardegna': 'Sardinia',
-    'Sicilia': 'Sicily',
-    'Toscana': 'Tuscany',
-    'Trentino-Alto Adige': 'Trentino-Alto Adige/Südtirol',
-    'Umbria': 'Umbria',
-    "Valle d'Aosta": 'Aosta Valley',
-    'Veneto': 'Veneto'
-}
 
 
 # %%
 
 
-def loading(name):
+def loading(name,italian_to_english):
+    """
+    Load data for a specific region and generate a dataframe with load information.
 
-    loads = HESS(name.split(".")[0]).load()
+    Parameters:
+        name (str): The name of the region for which the data is loaded.
+
+    Returns:
+        tuple: A tuple containing two dataframes. The first dataframe contains load information and the second dataframe contains PV data.
+
+    """
+
+
+    loads = HESS(name).load()
     loads["Day"] = loads.index.day_of_year
 
     english_name_region=italian_to_english[name.split(".")[0]]
 
-    df_PV = PV_data(lat=Ita[Ita.name_1 == english_name_region].centroid.x,
-                   long=Ita[Ita.name_1 == english_name_region].centroid.y,
+    # using Renewable Ninja API and optimal azimuth and titl angle
+    df_PV = PV_data(lat=Ita[Ita.name_1 == english_name_region].centroid.y,
+                   long=Ita[Ita.name_1 == english_name_region].centroid.x,
                    cap=None,
                    Hemisphere='North',
                    year=2019).get_data()
-    #
-    # df_PV = pd.DataFrame(
-    #     {'PV': pd.read_csv(os.path.join(out, f"{name}"), index_col=0, parse_dates=True)["electricity"]})
+
 
     df_PV["Day"] = df_PV.index.day_of_year
 
@@ -130,6 +110,23 @@ class ML_cluser_TS():
         self.df = df  # it has columns different demands
 
     def finding_n_cluster(self, plotting):
+        """
+            Find the optimal number of clusters using the Elbow method and silhouette score.
+
+            Parameters:
+                plotting (str): Determines whether to plot the results or not. If set to "YES", the results will be plotted. Otherwise, no plot will be generated.
+
+            Returns:
+                None
+
+            Notes:
+                - The method calculates the within-cluster sum of squares (WCSS) and silhouette score for different numbers of clusters.
+                - The Elbow method is used to determine the optimal number of clusters based on the WCSS.
+                - The silhouette score is also calculated to provide additional insight into the clustering quality.
+                - If plotting is set to "YES", the method will generate a plot showing the WCSS and silhouette score for different numbers of clusters.
+                - The optimal number of clusters (knee point) is stored in the 'knee' attribute of the class.
+                - The scaled data (X) is stored in the 'X' attribute of the class.
+        """
 
         # initialization
 
@@ -165,8 +162,6 @@ class ML_cluser_TS():
 
             ax[0].set_ylabel('Inertia')
             ax[0].legend()
-            # ax[0].set_xlabel('Number of clusters')
-            # ax[0].grid()
             ax[0].tick_params(which='minor', bottom=False,
                               top=False, right=False, left=False)
 
@@ -191,12 +186,33 @@ class ML_cluser_TS():
         return
 
     def knee_cluster(self, plotting):
+        """
+        Perform k-means clustering on the data using the optimal number of clusters determined by the 'finding_n_cluster' method.
+
+        Parameters:
+            plotting (str): Determines whether to plot the results or not. If set to "YES", the results will be plotted. Otherwise, no plot will be generated.
+
+        Returns:
+            tuple: A tuple containing three arrays. The first array contains the centroids of the clusters, the second array contains the original unscaled data, and the third array contains the predicted cluster labels for each data point.
+
+        Notes:
+            - The method first scales the data using the 'scaler' object.
+            - The 'knee' attribute of the class is used to determine the number of clusters.
+            - The k-means clustering algorithm is then applied to the scaled data using the optimal number of clusters.
+            - The unscaled data is obtained by inverting the scaling transformation.
+            - If plotting is set to "YES", the method will generate a plot showing the original data points and the centroids for each cluster.
+            - The predicted cluster labels for each data point are stored in the 'y_pred' attribute of the class.
+            - The centroids of the clusters are stored in the 'X_centers' attribute of the class.
+            - The original unscaled data is stored in the 'X_back' attribute of the class.
+        """
         X = scaler.fit_transform(self.df)
 
         cluster = KMeans(n_clusters=self.knee, random_state=0)
 
         y_pred = cluster.fit_predict(X)
 
+
+        # getting centroids value and original values
         X_back = scaler.inverse_transform(X)
         X_centers = scaler.inverse_transform(cluster.cluster_centers_)
 
@@ -227,38 +243,43 @@ class ML_cluser_TS():
         self.cluster = cluster
         return X_centers, X_back, y_pred
 
-    def checking_silhoutte(self):
-        X = scaler.fit_transform(self.df)
-
-        cluster = KMeans(n_clusters=self.knee, random_state=0)
-
-        labels = cluster.fit_predict(X)
-
-        sil_media = silhouette_score(X, labels)
-        samp = silhouette_samples(X, labels)
-
-        # for i in labels:
-        #     print(f"{np.mean(samp[labels == i] > sil_media)} \n")
-
-        # number of elements in each clusters
-        return np.unique(labels, return_counts=True)
 
 
 # %%
 
 def clusters(loads, df_PV):
-    df_regroup = pd.DataFrame(index=np.arange(1, 366, 1))
+    """
+    Perform clustering analysis on the given loads and PV data.
+
+    Parameters:
+        loads (DataFrame): A DataFrame containing load information.
+        df_PV (DataFrame): A DataFrame containing PV data.
+
+    Returns:
+        dict: A dictionary containing the clustered data. The keys of the dictionary represent the cluster labels, and the values are DataFrames containing the load and PV data for each cluster.
+
+    Notes:
+        - The function first regroups the PV and loads data by day.
+        - It then applies k-means clustering to the regrouped data.
+        - The optimal number of clusters is determined using the 'finding_n_cluster' and 'knee_cluster' methods of the 'ML_cluser_TS' class.
+        - For each cluster, the function selects the corresponding days from the original data and calculates the average load and PV values for each hour.
+        - The resulting clustered data is returned as a dictionary, where each key represents a cluster label and the corresponding value is a DataFrame containing the average load and PV values for each hour.
+    """
+    df_regroup = pd.DataFrame(index=np.arange(1, 365+1, 1))
+
+    # grouping the PV and loads by the
     df_regroup["PV"] = df_PV.groupby("Day").sum()[df_PV.columns[0]].values
 
     df_regroup["load"] = loads.groupby("Day").sum()["load (kWh)"].values
 
-    a = ML_cluser_TS(df_regroup)
-    a.finding_n_cluster("FALSE")
-    X_centers, X_back, y_pred = a.knee_cluster("FALSE")
-    # %%
-    d = {}
+    K_means_ML = ML_cluser_TS(df_regroup)
+    K_means_ML.finding_n_cluster("YES")
+    X_centers, X_back, y_pred = K_means_ML.knee_cluster("YES")
 
-    for i in range(a.knee):
+    # %%
+    Clusterds_dict = {}
+
+    for i in range(K_means_ML.knee):
         index = loads["Day"].unique()[y_pred == i]
         loads["Hour"] = loads.index.hour
         df_PV["Hour"] = df_PV.index.hour
@@ -271,15 +292,27 @@ def clusters(loads, df_PV):
         gen = p.loc[index]
         p.groupby("Hour").mean()
 
-        d[f"Cluster {i}"] = pd.concat(
+        Clusterds_dict[f"Cluster {i}"] = pd.concat(
             [e.drop(columns=['Days']).groupby("Hour").mean(), p.groupby("Hour").mean()], axis=1)
 
-    return d
+    return Clusterds_dict
 
 
 # %%
 
 def pyomo_model(lf, hlist, df):
+    """
+    Perform optimization modeling using Pyomo.
+
+    Parameters:
+        lf (float): The load factor.
+        hlist (list): A list of hours.
+        df (DataFrame): A DataFrame containing PV and load data.
+
+    Returns:
+        model: The Pyomo model object.
+
+    """
 
     # parameters
     C_rate_bess_max = 1
@@ -295,7 +328,7 @@ def pyomo_model(lf, hlist, df):
 
     # hlist = [i for i in range(days*24)]  # hours
 
-    PV_gen = (df["PV"]*1000).tolist()
+    PV_gen = (df[df.columns[1]]*1000).tolist()
     load = (df['load (kWh)']*1000).tolist()
 
     model = ConcreteModel()  # Pyomo concrete model
@@ -418,6 +451,18 @@ def pyomo_model(lf, hlist, df):
 
 
 def df_summary(d, saving_fold):
+    """
+    Perform a summary analysis of the optimization results.
+
+    Parameters:
+        d (dict): A dictionary containing the data for each region.
+        saving_fold (str): The path to the folder where the results will be saved.
+
+    Returns:
+        DataFrame: A DataFrame containing the summary results for each region.
+
+    """
+
     eta_BESS = 0.9
 
     df_summary = pd.DataFrame(
@@ -434,9 +479,7 @@ def df_summary(d, saving_fold):
         results = opt.solve(model)
         model.solutions.store_to(results)
 
-        # print(value(instance.obj2))
 
-        # %%
 
         for step in np.arange(0.1, 1.0, 0.05)[::-1]:
             opt = pyo.SolverFactory('gurobi')
@@ -455,9 +498,8 @@ def df_summary(d, saving_fold):
         # %%
         df_res = pd.DataFrame(index=np.arange(0, len(hlist), 1))
         df_res["PV"] = [i*model.PV_size.extract_values()[None]
-                        for i in (de["PV"]*1000).tolist()]
+                        for i in (de[de.columns[1]]*1000).tolist()]
         df_res["Load"] = (de['load (kWh)']*1000).tolist()
-        # df_res["EZ_on"]=model.EZ_on.extract_values()
         df_res["Electrolyser"] = model.EZ_E_in.extract_values()
         df_res["EZ_out"] = model.EZ_E_out.extract_values()
 
@@ -478,18 +520,15 @@ def df_summary(d, saving_fold):
         plt.savefig(saving_fold+f"{name.split('.')[0]}"+j+".png", dpi=300)
 
         print(f"objective value is {value(model.obj2)}")
-        # print(f"EZ size is {value(model.EZ_size)}")
 
         df_plot = pd.DataFrame(index=df_res.index)
         df_plot['PV'] = df_res["PV"]
         df_plot['Electrolyser'] = -df_res["Electrolyser"]
 
         df_plot['$Battery_{in}$'] = -df_res["$Battery_{in}$"]*eta_BESS
-        # df_plot['EZ_out']=df_res["EZ_out"]
         df_plot['$Battery_{out}$'] = df_res["$Battery_{out}$"]*eta_BESS
         df_plot['Load'] = -df_res["Load"]
 
-        # color_dict = {'PV': 'orange', 'EZ_in': 'green', 'Column3': 'green'}
 
         df_plot.plot.bar(stacked=True, edgecolor="black")
         ax = plt.gca()
@@ -498,9 +537,7 @@ def df_summary(d, saving_fold):
 
         plt.grid(axis="y", linestyle='--', linewidth=0.5, color="k")
         plt.legend(fancybox=False, edgecolor="k")
-        # (df_res["load"]*0.1).plot(ax=ax)
 
-        # plt.xticks(rotation=0)
         plt.title(
             f"{name.split('.')[0]} "+j+f"  \n {round(model.PV_size.extract_values()[None],2)*1000} W PV, Electrolyser {round(value(model.EZ_size))} W \n  Battery:{round(value(model.BESS_power))} W with {round(value(model.BESS_cap))} Wh ")
         df_summary.loc[j] = [round(model.PV_size.extract_values()[None], 2)*1000,
@@ -516,33 +553,3 @@ def df_summary(d, saving_fold):
 
 # %%
 
-
-saving_fold = os.path.join(os.getcwd(),
-                           "Results",
-                           "With load")
-
-de_tot = pd.DataFrame(columns=[["PV size (W)", "EZ size (W)", "BESS Cap [Wh]",
-                      "BESS Power [W]", "minimum lf", "Produced H2 (kg)", "minimum EZ load (W)"]])
-
-for name in names:
-
-    if not os.path.exists(saving_fold+f"{name.split('.')[0]}"):
-
-        # if the demo_folder directory is not present
-        # then create it.
-        os.makedirs(saving_fold+f"{name.split('.')[0]}")
-    else:
-        print("Folder present")
-
-    loads, df_PV = loading(name)
-
-    d = clusters(loads, df_PV)
-
-    df_summ = df_summary(d, saving_fold+f"{name.split('.')[0]}\\")
-
-    plt.close("all")
-
-    de_tot.loc[f"{name.split('.')[0]}"] = df_summ[df_summ['EZ size (W)'] ==
-                                                  df_summ['EZ size (W)'].min()].iloc[0, :].tolist()
-
-de_tot.to_csv(saving_fold+"df_all.csv")
