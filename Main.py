@@ -1,29 +1,41 @@
 import matplotlib.pyplot as plt
 import matplotlib
-import os
-# matplotlib.use('TkAgg')
-import numpy as np
 import geopandas as gpd
+import pandas as pd
 from geodatasets import get_path  # This is a helper function to get the path to the dataset
 path = get_path("naturalearth.land")
-df = gpd.read_file(path)
+df_Pun = gpd.read_file(path)
 
 import warnings
 warnings.filterwarnings("ignore")
 
-from tqdm import tqdm
 
 from src.Geopandas import Geoplot
 
 from src.Opt_with_load import *
-
+from src.ECO_analysis import *
+import yaml
 # %%
 
 
-plt.rcParams["font.family"] = "Times New Roman"
+plt.rcParams["font.family"] = "Arial"
 # plt.rcParams["figure.constrained_layout.use"] = True
 params = {'mathtext.default': 'regular'}
 plt.rcParams.update(params)
+
+data_path = os.path.join('Input_data',
+                             'Pun_2022.xlsx')
+
+df_Pun = pd.read_excel(data_path, sheet_name='Prezzi-Prices')
+
+date_str = '1/1/2023'
+start = pd.to_datetime(date_str) - pd.Timedelta(days=365)
+hourly_periods = 8760
+drange = pd.date_range(start, periods=hourly_periods, freq='H')
+
+df_Pun.index = drange
+
+df_Pun = df_Pun['PUN']
 
 
 
@@ -52,38 +64,53 @@ italian_to_english = {
     'Veneto': 'Veneto'
 }
 
+#
+# df_post_eval=pd.DataFrame(columns=['LCOH (€/kg)','emission (tonCo2/y)'])
+# for i in italian_to_english.keys():
+#     df_post_eval.loc[i]=[Eval(i).Eco_analysis(),
+#                          Eval(i).Env_analysis() / 1000000]
+#
+#
+#
+# df_post_eval.to_csv('eval_all.csv')
 
-#
-# saving_fold = os.path.join(os.getcwd(),
-#                            "Results",
-#                            "With load")
-#
-# de_tot = pd.DataFrame(columns=[["PV size (W)", "EZ size (W)", "BESS Cap [Wh]",
-#                       "BESS Power [W]", "minimum lf", "Produced H2 (kg)", "minimum EZ load (W)"]])
-#
-# for name in italian_to_english.keys() :
-#     print(name+" Started")
-#     print("-----------")
-#
-#     if not os.path.exists(os.path.join(saving_fold,name)):
-#
-#         # if the demo_folder directory is not present
-#         # then create it.
-#         os.makedirs(os.path.join(saving_fold,name))
-#     else:
-#         print("Folder present")
-#
-#     loads, df_PV = loading(name,italian_to_english)
-#
-#     d = clusters(loads, df_PV)
-#
-#     df_summ = df_summary(d, os.path.join(saving_fold,name),name)
-#
-#     plt.close("all")
-#
-#     de_tot.loc[f"{name.split('.')[0]}"] = df_summ[df_summ['EZ size (W)'] ==
-#                                                   df_summ['EZ size (W)'].min()].iloc[0, :].tolist()
-#
+Eval('Abruzzo').Eco_analysis()
+plt.savefig('pie1.png',dpi=300)
+Eval('Abruzzo').Env_analysis()
+plt.savefig('pie2.png',dpi=300)
+
+plt.show()
+
+saving_fold = os.path.join(os.getcwd(),
+                           "Results",
+                           "With load")
+
+de_tot = pd.DataFrame(columns=[["PV size (W)", "EZ size (W)", "BESS Cap [Wh]",
+                      "BESS Power [W]", "minimum lf", "Produced H2 (kg)", "minimum EZ load (W)"]])
+
+for name in italian_to_english.keys() :
+    print(name+" Started")
+    print("-----------")
+
+    if not os.path.exists(os.path.join(saving_fold,name)):
+
+        # if the demo_folder directory is not present
+        # then create it.
+        os.makedirs(os.path.join(saving_fold,name))
+    else:
+        print("Folder present")
+
+    loads, df_PV = loading(name,italian_to_english)
+
+    d = clusters(loads, df_PV)
+
+    df_summ = df_summary(d, os.path.join(saving_fold,name),name)
+
+    plt.close("all")
+
+    de_tot.loc[f"{name.split('.')[0]}"] = df_summ[df_summ['EZ size (W)'] ==
+                                                  df_summ['EZ size (W)'].min()].iloc[0, :].tolist()
+
 # de_tot.to_csv(os.path.join(saving_fold,"df_all.csv"))
 
 # %%
@@ -172,9 +199,9 @@ for j,i in enumerate(geopd['CNTR_CODE'].unique()):
 #            color='lightblue',
 #            column='CNTR_CODE', cmap='viridis', legend=True)
 ax.set_xlim(-25, 40)
-ax.set_xlabel('latitude')
+ax.set_xlabel('latitude [°]')
 ax.set_ylim(32, 75)
-ax.set_ylabel('longitude')
+ax.set_ylabel('longitude [°]')
 plt.savefig('Europe_NUTS.png', dpi=300)
 
 # plt.show()

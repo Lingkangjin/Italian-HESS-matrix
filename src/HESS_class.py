@@ -49,7 +49,7 @@ class HESS():
         print(holiday_dates)
 
         # %% initialize the time index
-        date_str = '01/01/2022'
+        date_str = '01/01/2023'
         start = pd.to_datetime(date_str) - pd.Timedelta(days=365)
         hourly_periods = 8760
         drange = pd.date_range(start, periods=hourly_periods, freq='h')
@@ -67,8 +67,8 @@ class HESS():
 
         # %%
 
-        start_date = '2021-01-01'
-        end_date = '2021-12-31'
+        start_date = '2022-01-01'
+        end_date = '2022-12-31'
 
         days = pd.date_range(start=start_date, end=end_date, freq='D').tolist()
 
